@@ -3,6 +3,7 @@ import type { AuditStatus, AuditSession, RepoAnalysis, SkillProfile, MarketFit, 
 export interface AuditStartPayload {
   github_username: string
   project_urls: string[]
+  deployment_url?: string
   resume_text?: string
   target_branch?: string
   target_module_path?: string

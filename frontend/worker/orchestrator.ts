@@ -3,6 +3,7 @@ import { QUEUE_NAMES } from '@/lib/queue/client'
 import { handleGitHubFetch } from './jobs/github-fetcher'
 import { handleCodeAnalysis } from './jobs/code-analyzer'
 import { handleLiveAudit } from './jobs/live-auditor'
+import { handleUiUxTest } from './jobs/ui-ux-tester'
 import { handleAISynthesis } from './jobs/ai-synthesizer'
 import { handleMarketFetch } from './jobs/market-fetcher'
 import type { Worker } from 'bullmq'
@@ -21,7 +22,7 @@ export function createAuditOrchestrator(): AuditOrchestrator {
   // Main audit queue — dispatches to sub-queues based on stage
   const auditHandlers: WorkerJobHandlers = {
     'start-audit': async (job) => {
-      const { session_id, github_username, project_urls } = job.data
+      const { session_id, github_username, project_urls, deployment_url } = job.data
 
       // Update status to mark the next stage is ready
       await job.updateProgress(5)
@@ -33,7 +34,7 @@ export function createAuditOrchestrator(): AuditOrchestrator {
       
       // Enqueue the next step
       const { getQueue, QUEUE_NAMES } = await import('@/lib/queue/client')
-      await getQueue(QUEUE_NAMES.GITHUB_FETCH).add('fetch-repos', { session_id, github_username, project_urls }, { jobId: `github-${session_id}` })
+      await getQueue(QUEUE_NAMES.GITHUB_FETCH).add('fetch-repos', { session_id, github_username, project_urls, deployment_url }, { jobId: `github-${session_id}` })
 
       return { session_id, started_at: new Date().toISOString() }
     },
@@ -55,6 +56,11 @@ export function createAuditOrchestrator(): AuditOrchestrator {
     'lighthouse-audit': handleLiveAudit,
   }
   workers.push(createWorker(QUEUE_NAMES.LIVE_AUDIT, liveAuditHandlers, { concurrency: 1 }))
+
+  const uiUxHandlers: WorkerJobHandlers = {
+    'test-ui-ux': handleUiUxTest,
+  }
+  workers.push(createWorker(QUEUE_NAMES.UI_UX_TEST, uiUxHandlers, { concurrency: 1 }))
 
   const synthesisHandlers: WorkerJobHandlers = {
     'synthesize-profile': handleAISynthesis,

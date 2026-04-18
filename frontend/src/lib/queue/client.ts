@@ -7,6 +7,7 @@ export const QUEUE_NAMES = {
   GITHUB_FETCH: 'github-fetch',
   CODE_ANALYSIS: 'code-analysis',
   LIVE_AUDIT: 'live-audit',
+  UI_UX_TEST: 'ui-ux-test',
   AI_SYNTHESIS: 'ai-synthesis',
   MARKET_FETCH: 'market-fetch',
 } as const
@@ -89,6 +90,7 @@ export async function addAuditJob(
   payload: {
     github_username: string
     project_urls: string[]
+    deployment_url?: string
     resume_text?: string
     target_branch?: string
     target_module_path?: string

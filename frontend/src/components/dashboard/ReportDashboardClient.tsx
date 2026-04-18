@@ -10,15 +10,17 @@ import { MarketFitPanel } from '@/components/dashboard/MarketFitPanel'
 import { SalaryGapChart } from '@/components/dashboard/SalaryGapChart'
 import { RoadmapView } from '@/components/dashboard/RoadmapView'
 import { ResumeDamageReport } from '@/components/dashboard/ResumeDamageReport'
+import { UiUxTestPanel } from '@/components/dashboard/UiUxTestPanel'
 
 interface ReportDashboardClientProps {
   report: AuditReport
 }
 
-type TabKey = 'findings' | 'market' | 'roadmap' | 'resume'
+type TabKey = 'findings' | 'market' | 'roadmap' | 'resume' | 'uiux'
 
 const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
   { key: 'findings', label: 'Findings', icon: AlertTriangle },
+  { key: 'uiux', label: 'UI/UX', icon: BarChart3 },
   { key: 'market', label: 'Market', icon: Target },
   { key: 'roadmap', label: 'Roadmap', icon: Map },
   { key: 'resume', label: 'Resume', icon: FileText },
@@ -184,6 +186,10 @@ export function ReportDashboardClient({ report }: ReportDashboardClientProps) {
             <div>
               {activeTab === 'findings' && (
                 <FlawFindingsPanel findings={flaw_findings || []} />
+              )}
+
+              {activeTab === 'uiux' && (
+                <UiUxTestPanel session={session} />
               )}
 
               {activeTab === 'market' && market_fit && (

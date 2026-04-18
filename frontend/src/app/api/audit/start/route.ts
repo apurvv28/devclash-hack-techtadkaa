@@ -9,6 +9,7 @@ import { isMemoryMode } from '@/lib/queue/client'
 const StartAuditSchema = z.object({
   github_username: z.string().min(1).max(39),
   project_urls: z.array(z.string().url()).min(1).max(10),
+  deployment_url: z.string().url().optional(),
   resume_text: z.string().max(10000).optional(),
   target_branch: z.string().max(255).optional(),
   target_module_path: z.string().max(500).optional(),
@@ -44,17 +45,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     )
   }
 
-  const { github_username, project_urls, resume_text, target_branch, target_module_path } = parsed.data
+  const { github_username, project_urls, deployment_url, resume_text, target_branch, target_module_path } = parsed.data
 
   // Create audit session in DB
   const session: Omit<AuditSession, 'id'> = {
     github_username,
     project_urls,
+    deployment_url,
     resume_text,
     target_branch,
     target_module_path,
     status: 'queued',
     progress_percent: 0,
+    ui_ux_skipped: !deployment_url,
     created_at: new Date().toISOString(),
   }
 
@@ -75,6 +78,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     await addAuditJob(sessionId, {
       github_username,
       project_urls,
+      deployment_url,
       resume_text,
       target_branch,
       target_module_path,

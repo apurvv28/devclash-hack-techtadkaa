@@ -16,6 +16,7 @@ const STAGES = [
   { id: 'fetching_github', label: 'Fetching GitHub Repositories' },
   { id: 'analyzing_code', label: 'AST Code Validation & Security Scan' },
   { id: 'auditing_live', label: 'Live Playwright & Lighthouse Audit' },
+  { id: 'testing_ui_ux', label: 'UI/UX Testing (Playwright)' },
   { id: 'synthesizing_ai', label: 'Groq/Gemini Architecture Synthesis' },
   { id: 'fetching_market', label: 'Jooble & Remotive Salary Evaluation' },
 ]

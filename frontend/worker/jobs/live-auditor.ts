@@ -212,7 +212,7 @@ export class LiveAppAuditor {
 
 // ─── BullMQ Worker Handler ───
 export async function handleLiveAudit(job: Job): Promise<void> {
-  const { session_id, repo_analyses, live_urls = [] } = job.data as any
+  const { session_id, repo_analyses, deployment_url, live_urls = [] } = job.data as any
   
   await updateSessionStatus(session_id, 'auditing_live', 70)
 
@@ -246,6 +246,14 @@ export async function handleLiveAudit(job: Job): Promise<void> {
 
   await updateSessionStatus(session_id, 'auditing_live', 78)
   await new Promise(r => setTimeout(r, 300))
+
+  // Enqueue UI/UX test if deployment_url exists
+  if (deployment_url) {
+    console.log(`[LiveAuditor] Enqueueing UI/UX test for deployment URL: ${deployment_url}`)
+    const uiUxQueue = getQueue(QUEUE_NAMES.UI_UX_TEST)
+    await uiUxQueue.add('test-ui-ux', { session_id, deployment_url }, { jobId: `uiux-${session_id}` })
+  }
+
   await updateSessionStatus(session_id, 'synthesizing_ai', 80)
 
   // Enqueue AI synthesis

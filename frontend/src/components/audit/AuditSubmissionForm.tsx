@@ -2,12 +2,13 @@
 
 import React, { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2, Loader2, UploadCloud, FolderGit2, FileText } from 'lucide-react'
+import { Plus, Trash2, Loader2, UploadCloud, FolderGit2, FileText, Globe } from 'lucide-react'
 
 export function AuditSubmissionForm({ username }: { username: string }) {
   const router = useRouter()
   // By default, suggest their primary page or start empty
   const [urls, setUrls] = useState<string[]>([''])
+  const [deploymentUrl, setDeploymentUrl] = useState('')
   const [branch, setBranch] = useState('')
   const [loading, setLoading] = useState(false)
   const [isParsing, setIsParsing] = useState(false)
@@ -87,6 +88,7 @@ export function AuditSubmissionForm({ username }: { username: string }) {
         body: JSON.stringify({
           github_username: username,
           project_urls: validUrls.length > 0 ? validUrls : [`https://github.com/${username}`],
+          deployment_url: deploymentUrl.trim() || undefined,
           resume_text: resumeText,
           target_branch: branch.trim() || undefined,
         }),
@@ -230,6 +232,29 @@ export function AuditSubmissionForm({ username }: { username: string }) {
             className="w-full bg-white border border-[#E2E8F0] text-[#1A202C] rounded-xl px-4 py-3.5 focus:border-[#003882]/50 focus:ring-1 focus:ring-[#003882]/50 focus:outline-none placeholder:text-[#CBD5E0] font-mono text-sm transition-all shadow-none"
           />
           <p className="text-[12px] text-[#718096] mt-1.5 font-medium">Leave blank to default to main/master.</p>
+        </div>
+
+        {/* Deployment URL Block */}
+        <div className="p-5 border border-[#E2E8F0] rounded-xl bg-[#FAFBFC]">
+          <label className="block text-[13px] font-medium text-[#4A5568] mb-2.5 flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <Globe size={14} className="text-[#003882]" />
+              Deployment URL
+            </span>
+            <span className="text-[#003882] bg-blue-50 px-2 py-0.5 rounded text-[10px] font-bold tracking-widest uppercase">Optional</span>
+          </label>
+          <input
+            type="url"
+            placeholder="https://my-app.vercel.app"
+            value={deploymentUrl}
+            onChange={(e) => setDeploymentUrl(e.target.value)}
+            className="w-full bg-white border border-[#E2E8F0] text-[#1A202C] rounded-xl px-4 py-3.5 focus:border-[#003882]/50 focus:ring-1 focus:ring-[#003882]/50 focus:outline-none placeholder:text-[#CBD5E0] font-mono text-sm transition-all shadow-none"
+          />
+          <p className="text-[12px] text-[#718096] mt-2 font-medium leading-relaxed">
+            Provide your live deployment URL to enable automated <b>Playwright UI/UX testing</b>.
+            We will test responsiveness, console errors, accessibility, and interactive elements,
+            then generate a UI/UX score. Leave blank to skip UI/UX testing.
+          </p>
         </div>
 
         {error && <div className="text-[#E2001A] text-sm bg-red-50 border border-red-200 px-4 py-3 rounded-xl flex items-center font-medium">{error}</div>}

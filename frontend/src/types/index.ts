@@ -3,6 +3,7 @@ export type AuditStatus =
   | 'fetching_github'
   | 'analyzing_code'
   | 'auditing_live'
+  | 'testing_ui_ux'
   | 'synthesizing_ai'
   | 'fetching_market'
   | 'complete'
@@ -30,11 +31,14 @@ export interface AuditSession {
   id: string
   github_username: string
   project_urls: string[]
+  deployment_url?: string
   resume_text?: string
   target_branch?: string
   target_module_path?: string
   status: AuditStatus
   progress_percent: number
+  ui_ux_score?: number
+  ui_ux_skipped?: boolean
   created_at: string
   completed_at?: string
 }

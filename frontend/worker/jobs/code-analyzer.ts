@@ -20,6 +20,7 @@ const MAX_FILES_PER_REPO = 200
 interface AnalyzeRepoPayload {
   session_id: string
   github_username: string
+  deployment_url?: string
   repos: Array<{
     repo_name: string
     branch_name: string
@@ -30,7 +31,7 @@ interface AnalyzeRepoPayload {
 }
 
 export async function handleCodeAnalysis(job: Job): Promise<void> {
-  const { session_id, github_username, repos } = job.data as AnalyzeRepoPayload
+  const { session_id, github_username, deployment_url, repos } = job.data as AnalyzeRepoPayload
 
   console.log(`[CodeAnalyzer] Starting analysis for session ${session_id}, ${repos.length} repo(s)`)
   await updateSessionStatus(session_id, 'analyzing_code', 42)
@@ -210,6 +211,7 @@ export async function handleCodeAnalysis(job: Job): Promise<void> {
   const liveAuditQueue = getQueue(QUEUE_NAMES.LIVE_AUDIT)
   await liveAuditQueue.add('lighthouse-audit', {
     session_id,
+    deployment_url,
     repo_analyses: repoAnalyses,
   })
 }

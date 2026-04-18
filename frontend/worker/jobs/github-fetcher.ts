@@ -9,11 +9,12 @@ interface GitHubFetchPayload {
   session_id: string
   github_username: string
   project_urls: string[]
+  deployment_url?: string
   target_branch?: string
 }
 
 export async function handleGitHubFetch(job: Job): Promise<void> {
-  const { session_id, github_username, project_urls, target_branch } = job.data as GitHubFetchPayload
+  const { session_id, github_username, project_urls, deployment_url, target_branch } = job.data as GitHubFetchPayload
 
   await updateSessionStatus(session_id, 'fetching_github', 2)
 
@@ -113,6 +114,7 @@ export async function handleGitHubFetch(job: Job): Promise<void> {
   await analysisQueue.add('analyze-repo', {
     session_id,
     github_username,
+    deployment_url,
     repos: repoData.map((r) => ({
       repo_name: r.repo.full_name,
       branch_name: r.repo.default_branch,
