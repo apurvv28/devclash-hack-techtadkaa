@@ -23,17 +23,17 @@ export async function handleMarketFetch(job: Job): Promise<void> {
 
   const repos: RepoAnalysis[] = (repoAnalyses ?? []) as RepoAnalysis[]
 
-  // Derive candidate skills for job search queries
-  const candidateSkills = deriveCandidateSkills(skill_profile, repos)
-  const tier = skill_profile.overall_tier
-  const country = 'in' // India default; gb for remote
-
-  // ── Retrieve User Location from GitHub ──
+  // ── Retrieve User Location & Resume from DB ──
   const { data: session } = await supabaseAdmin
     .from('audit_sessions')
-    .select('github_username')
+    .select('github_username, resume_text')
     .eq('id', session_id)
     .single()
+
+  // Derive candidate skills for job search queries
+  const candidateSkills = deriveCandidateSkills(skill_profile, repos, session?.resume_text)
+  const tier = skill_profile.overall_tier
+  const country = 'in' // India default; gb for remote
 
   let userLocationArr: string[] = []
   if (session?.github_username) {
@@ -147,36 +147,46 @@ export async function handleMarketFetch(job: Job): Promise<void> {
   }
 }
 
-function deriveCandidateSkills(profile: SkillProfile, repos: RepoAnalysis[]): string[] {
+function deriveCandidateSkills(profile: SkillProfile, repos: RepoAnalysis[], resumeText?: string | null): string[] {
   const skills = new Set<string>()
 
   // From repo languages
   for (const repo of repos) {
     if (repo.language && repo.language !== 'unknown') {
-      skills.add(repo.language)
+      skills.add(repo.language.toLowerCase())
     }
   }
 
-  // From tier
-  const tier = profile.overall_tier
-  if (['Senior', 'Staff', 'Mid+', 'Mid'].includes(tier)) {
-    skills.add('typescript')
-    skills.add('react')
-    skills.add('node.js')
-    skills.add('postgresql')
+  // From Resume Text
+  if (resumeText) {
+    const patterns = [
+      /\b(TypeScript|JavaScript|Python|Java|Go|Rust|C\+\+|Ruby|Swift|Kotlin|Scala|PHP|SQL)\b/gi,
+      /\b(React|Next\.js|Vue|Angular|Express|FastAPI|Django|Spring|Rails|NestJS|Svelte|Flask)\b/gi,
+      /\b(AWS|GCP|Azure|Docker|Kubernetes|Terraform|CI\/CD|GitHub Actions|Helm|Vercel)\b/gi,
+      /\b(PostgreSQL|MySQL|MongoDB|Redis|Elasticsearch|DynamoDB|Supabase|Prisma|Convex)\b/gi,
+      /\b(microservices|REST|GraphQL|gRPC|TDD|DDD|CQRS|WebSockets|LangGraph|CrewAI)\b/gi,
+      /\b(Node\.js|Bun|Deno|webpack|Vite|Jest|Vitest|Playwright|Cypress|MERN)\b/gi,
+      /\b(Llama|GPT|LLM|RAG|LangChain|Hugging\s*Face|Sagemaker|Machine Learning|ML)\b/gi,
+      /\b(Clerk|Auth0|Firebase|Tailwind|Bootstrap|Material UI|Chakra)\b/gi,
+    ]
+    for (const p of patterns) {
+      for (const m of resumeText.matchAll(p)) {
+        skills.add(m[0].toLowerCase())
+      }
+    }
   }
+
+  // From tier concepts
+  const tier = profile.overall_tier
   if (['Senior', 'Staff'].includes(tier)) {
     skills.add('system design')
-    skills.add('kubernetes')
-    skills.add('microservices')
+    skills.add('architecture')
   }
-  if (['Junior', 'Junior+'].includes(tier)) {
+
+  // If we found zero explicit languages/skills, fallback to something generic for the tier so the API doesn't fail
+  if (skills.size === 0) {
     skills.add('javascript')
-    skills.add('git')
-    skills.add('sql')
-  }
-  if (profile.backend_tier === 'Senior' || profile.backend_tier === 'Staff') {
-    skills.add('go')
+    skills.add('frontend')
   }
 
   return [...skills].slice(0, 8)

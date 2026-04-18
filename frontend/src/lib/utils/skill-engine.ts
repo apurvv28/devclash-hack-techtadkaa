@@ -40,21 +40,25 @@ export function deriveSkillProfile(input: SkillEngineInput): SkillProfile {
     total_repo_count,
   } = input
 
-  // Aggregate dimension scores from quality reports
-  const avgDimension = (name: string): number => {
-    const scores = quality_reports
-      .flatMap((r) => r.dimensions)
-      .filter((d) => d.name === name)
-      .map((d) => d.score)
-    return scores.length > 0 ? scores.reduce((s, v) => s + v, 0) / scores.length : 0
+  // Aggregate dimension scores from repo_analyses
+  const avgDimension = (key: keyof RepoAnalysis): number => {
+    const scores = repo_analyses
+      .map((r) => r[key] as number)
+      .filter((s) => typeof s === 'number')
+    return scores.length > 0 ? Math.round(scores.reduce((s, v) => s + v, 0) / scores.length) : 40
   }
 
-  const frontendScore = avgDimension('api_design') * 0.4 + avgDimension('modularity') * 0.3 + avgDimension('documentation') * 0.3
-  const backendScore = avgDimension('service_layer') * 0.35 + avgDimension('data_access') * 0.35 + avgDimension('error_handling') * 0.3
-  const testingScore = avgDimension('testing')
-  const securityScore = 100 - (repo_analyses.flatMap((r) => r.security_issues).filter((i) => i.severity === 'critical' || i.severity === 'high').length * 10)
-  const dbDesignScore = avgDimension('data_access')
-  const systemDesignScore = Math.max(...repo_analyses.map((r) => r.complexity_weight * 50), 0)
+  const frontendScore = avgDimension('api_design_score') * 0.4 + avgDimension('modularity_score') * 0.3 + avgDimension('doc_score') * 0.3
+  const backendScore = avgDimension('service_layer_score') * 0.35 + avgDimension('data_access_score') * 0.35 + avgDimension('error_handling_score') * 0.3
+  const testingScore = avgDimension('testing_score')
+  
+  const criticalIssues = repo_analyses.flatMap((r) => r.security_issues).filter((i) => i.severity === 'critical' || i.severity === 'high').length
+  const mediumIssues = repo_analyses.flatMap((r) => r.security_issues).filter((i) => i.severity === 'medium').length
+  const baseSecurity = 50 + Math.max(...repo_analyses.map((r) => r.complexity_tier), 1) * 5
+  const securityScore = Math.max(0, baseSecurity - (criticalIssues * 15) - (mediumIssues * 5))
+  
+  const dbDesignScore = avgDimension('data_access_score')
+  const systemDesignScore = Math.max(...repo_analyses.map((r) => r.complexity_weight * 50), Number(avgDimension('modularity_score')))
 
   // Compute archetype from all repo analyses
   const archetypes = repo_analyses.map((r) => r.commit_archetype)

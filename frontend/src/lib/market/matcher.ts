@@ -64,8 +64,8 @@ export async function matchJobsToProfile(params: {
     const requiredSkills = extractSkillsFromJD(jobText)
 
     if (requiredSkills.length === 0) {
-      // Fall back to tier-based matching
-      const match = tierMatch(skill_profile.overall_tier, rawJob.title)
+      // Fall back to tier-based matching, heavily penalizing tutorials
+      const match = tierMatch(skill_profile.overall_tier, rawJob.title, skill_profile.tutorial_penalty_applied)
       if (match > 20) {
         matchedJobs.push({
           title: rawJob.title,
@@ -203,16 +203,24 @@ export function suggestTargetCompanies(
 
 // ─── Tier-based fallback matcher ──────────────────────────────────────────────
 
-function tierMatch(tier: SkillProfile['overall_tier'], jobTitle: string): number {
+function tierMatch(tier: SkillProfile['overall_tier'], jobTitle: string, isTutorial?: boolean): number {
   const tierScore: Record<string, number> = {
     Staff: 4, Senior: 3, 'Mid+': 2.5, Mid: 2, 'Junior+': 1.5, Junior: 1, Beginner: 0.5,
   }
   let roleScore = 2
-  if (/senior|sr\.|staff|principal|lead|architect/i.test(jobTitle)) roleScore = 3
+  if (/senior|sr\.|staff|principal|lead|architect/i.test(jobTitle)) roleScore = 3.5
+  else if (/mid/i.test(jobTitle)) roleScore = 2
   else if (/junior|jr\.|associate|entry/i.test(jobTitle)) roleScore = 1
+  else roleScore = 2
 
-  const delta = Math.abs((tierScore[tier] ?? 2) - roleScore)
-  return Math.max(0, Math.round(100 - delta * 30))
+  const userScore = isTutorial ? (tierScore[tier] ?? 1) * 0.5 : (tierScore[tier] ?? 1)
+  const delta = Math.abs(userScore - roleScore)
+  
+  // Penalize aggressively for trying to punch above weight class
+  let penalty = delta * 40
+  if (userScore < roleScore) penalty *= 1.5 // Extra penalty for applying up
+
+  return Math.max(0, Math.round(100 - penalty))
 }
 
 // ─── Legacy exports for backward compat ──────────────────────────────────────

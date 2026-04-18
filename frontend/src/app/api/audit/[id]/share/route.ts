@@ -6,6 +6,43 @@ interface RouteParams {
   params: Promise<{ id: string }>
 }
 
+export async function GET(request: NextRequest, { params }: RouteParams): Promise<NextResponse> {
+  const { id } = await params
+
+  // Fetch session + skill profile for OG metadata
+  const { data: session } = await supabaseAdmin
+    .from('audit_sessions')
+    .select('id, status, github_username')
+    .eq('id', id)
+    .single()
+
+  if (!session) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
+  if (session.status !== 'complete') {
+    return NextResponse.json({ error: 'Report not yet complete' }, { status: 409 })
+  }
+
+  const { data: profile } = await supabaseAdmin
+    .from('skill_profiles')
+    .select('overall_tier, percentile_estimate, commit_archetype')
+    .eq('session_id', id)
+    .single()
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  const shareUrl = `${appUrl}/report/${id}`
+
+  const tierLabel = profile?.overall_tier ?? 'Unknown'
+  const percentile = profile?.percentile_estimate ?? 0
+
+  return NextResponse.json({
+    share_url: shareUrl,
+    og_title: `@${session.github_username} — ${tierLabel} Developer`,
+    og_description: `Verified ${tierLabel} tier (top ${100 - percentile}%) · ${profile?.commit_archetype ?? 'Unknown'} archetype — DevCareer Intelligence audit report`,
+  })
+}
+
 export async function POST(request: NextRequest, { params }: RouteParams): Promise<NextResponse> {
   const { id } = await params
   const userId = request.cookies.get('user_id')?.value

@@ -5,6 +5,7 @@ export class TutorialCloneDetector {
     repoName: string
     readmeContent: string | null
     commitHistory: Array<{ message: string; additions: number; deletions: number; date: string }>
+    commitCount: number
     fileTree: string[]
     description: string | null
   }): TutorialCloneResult {
@@ -47,17 +48,18 @@ export class TutorialCloneDetector {
     // Signal 3 — Commit pattern (weight 0.30)
     let commitScore = 0
     const commits = params.commitHistory
+    const totalCommits = Math.max(params.commitCount, commits.length)
 
-    if (commits.length <= 3 && commits.length > 0 && commits[0].additions > 500) {
+    if (totalCommits <= 3 && totalCommits > 0 && commits.length > 0 && commits[0].additions > 1000) {
       commitScore = 0.9
       signals_triggered.push('commit_pattern: large_dump')
-    } else if (commits.length <= 1) {
+    } else if (totalCommits <= 1 && totalCommits > 0) {
       commitScore = 1.0
       signals_triggered.push('commit_pattern: single_commit')
     } else if (commits.length > 0) {
-       const genericMsgs = ['initial commit', 'add files', 'first commit', 'done']
+       const genericMsgs = ['initial commit', 'add files', 'first commit', 'done', 'update']
        const allGeneric = commits.every(c => genericMsgs.includes(c.message.toLowerCase().trim()))
-       if (allGeneric) {
+       if (allGeneric && totalCommits < 5) {
           commitScore = 0.7
           signals_triggered.push('commit_pattern: generic_messages')
        }
@@ -71,11 +73,11 @@ export class TutorialCloneDetector {
 
     const isTodoMVC = hasStructure(['src/app.js', 'src/store.js', 'src/view.js']) || hasStructure(['app.js', 'store.js', 'view.js'])
     const isWeather = treeStr.includes('weather') && (params.readmeContent?.toLowerCase().includes('openweathermap') || treeStr.includes('openweathermap'))
-    const isCalc = hasStructure(['calculator.js', 'calculator.css', 'index.html'])
-    const isEcom = hasStructure(['products.json', 'cart.js', 'checkout.js'])
+    const isCalc = hasStructure(['calculator.js', 'calculator.css', 'index.html']) && totalCommits < 10
+    const isEcom = hasStructure(['products.json', 'cart.js', 'checkout.js']) && totalCommits < 10
 
     if (isTodoMVC) { structureScore += 0.8; signals_triggered.push('structure: todomvc') }
-    if (isWeather) { structureScore += 0.8; signals_triggered.push('structure: weather_app') }
+    if (isWeather && totalCommits < 10) { structureScore += 0.8; signals_triggered.push('structure: weather_app') }
     if (isCalc) { structureScore += 0.8; signals_triggered.push('structure: calculator') }
     if (isEcom) { structureScore += 0.8; signals_triggered.push('structure: ecommerce') }
     

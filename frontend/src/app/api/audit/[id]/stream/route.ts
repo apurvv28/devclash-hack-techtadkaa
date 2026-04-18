@@ -14,12 +14,23 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
     return new Response('Unauthorized', { status: 401 })
   }
 
+  // Get Github Username from user_id since audit_sessions only stores github_username
+  const { data: user } = await supabaseAdmin
+    .from('users')
+    .select('github_username')
+    .eq('id', userId)
+    .single()
+
+  if (!user?.github_username) {
+    return new Response('Unauthorized User', { status: 401 })
+  }
+
   // Verify this audit belongs to the user
   const { data: session } = await supabaseAdmin
     .from('audit_sessions')
     .select('id, status, progress_percent')
     .eq('id', id)
-    .eq('user_id', userId)
+    .eq('github_username', user.github_username)
     .single()
 
   if (!session) {

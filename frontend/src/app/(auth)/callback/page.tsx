@@ -15,7 +15,7 @@ export default async function CallbackPage({ searchParams }: CallbackPageProps) 
       <main
         style={{
           minHeight: '100vh',
-          background: '#0A0F1E',
+          background: '#F8F9FA',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -24,22 +24,23 @@ export default async function CallbackPage({ searchParams }: CallbackPageProps) 
       >
         <div
           style={{
-            background: '#0D1530',
-            border: '1px solid #FF4444',
+            background: '#FFFFFF',
+            border: '1px solid #E2001A',
             borderRadius: '1rem',
             padding: '2rem',
             maxWidth: '420px',
             textAlign: 'center',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
           }}
         >
-          <h1 style={{ color: '#FF4444', marginBottom: '0.75rem' }}>Authentication Failed</h1>
-          <p style={{ color: '#8B9BB4' }}>{error_description ?? error}</p>
+          <h1 style={{ color: '#E2001A', marginBottom: '0.75rem' }}>Authentication Failed</h1>
+          <p style={{ color: '#4A5568' }}>{error_description ?? error}</p>
           <a
             href="/login"
             style={{
               display: 'inline-block',
               marginTop: '1.5rem',
-              color: '#00D4FF',
+              color: '#003882',
               textDecoration: 'underline',
             }}
           >

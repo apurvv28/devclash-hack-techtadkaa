@@ -143,6 +143,7 @@ export async function handleCodeAnalysis(job: Job): Promise<void> {
       repoName: repoName,
       readmeContent: readme,
       commitHistory: [], 
+      commitCount: repoMeta.commit_count,
       fileTree: repoMeta.file_tree.map((f) => f.path),
       description: null
     })

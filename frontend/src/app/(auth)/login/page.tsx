@@ -10,7 +10,7 @@ export default function LoginPage() {
     <main
       style={{
         minHeight: '100vh',
-        background: '#0A0F1E',
+        background: '#F8F9FA',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -19,26 +19,27 @@ export default function LoginPage() {
     >
       <div
         style={{
-          background: '#0D1530',
-          border: '1px solid #1E2D4A',
+          background: '#FFFFFF',
+          border: '1px solid #E2E8F0',
           borderRadius: '1rem',
           padding: '3rem',
           width: '100%',
           maxWidth: '420px',
           textAlign: 'center',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
         }}
       >
         <h1
           style={{
             fontSize: '1.875rem',
             fontWeight: 700,
-            color: '#E8EDF5',
+            color: '#1A202C',
             marginBottom: '0.75rem',
           }}
         >
           Start Your Audit
         </h1>
-        <p style={{ color: '#8B9BB4', marginBottom: '2rem', lineHeight: 1.6 }}>
+        <p style={{ color: '#4A5568', marginBottom: '2rem', lineHeight: 1.6 }}>
           Connect your GitHub account to begin the analysis. We request read-only access.
         </p>
         <a
@@ -49,14 +50,15 @@ export default function LoginPage() {
             alignItems: 'center',
             justifyContent: 'center',
             gap: '0.75rem',
-            background: '#E8EDF5',
-            color: '#0A0F1E',
+            background: 'linear-gradient(135deg, #00A1E4 0%, #003882 100%)',
+            color: '#FFFFFF',
             fontWeight: 700,
             fontSize: '1rem',
             padding: '0.875rem 2rem',
             borderRadius: '0.75rem',
             textDecoration: 'none',
             transition: 'background 0.15s',
+            boxShadow: '0 4px 16px rgba(0,56,130,0.25)',
           }}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -64,7 +66,7 @@ export default function LoginPage() {
           </svg>
           Continue with GitHub
         </a>
-        <p style={{ color: '#4A5568', fontSize: '0.75rem', marginTop: '1.5rem' }}>
+        <p style={{ color: '#718096', fontSize: '0.75rem', marginTop: '1.5rem' }}>
           Read-only access. We never write to your repositories.
         </p>
       </div>

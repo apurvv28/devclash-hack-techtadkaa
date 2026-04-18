@@ -7,9 +7,9 @@ export function runSecurityScan(files: FileContent[]): SecurityIssue[] {
   // Define patterns explicitly mapped to severity and actionable fixes
   const patterns = [
     {
-      regex: /(?:password|secret|api_key|apikey|token)\s*=\s*["'][^"']{6,}["']/gi,
+      regex: /(?:password|secret|api_?key|token|auth)\s*(?:=|:)\s*["'][a-zA-Z0-9_\-\.]{12,}["']/gi,
       rule_name: 'hardcoded-secret',
-      description: 'Hardcoded secret detected in codebase',
+      description: 'Hardcoded API Key, Token, or Secret detected in codebase',
       severity: 'critical' as const,
       fix_suggestion: 'Remove the hardcoded secret and use environment variables (e.g., process.env.SECRET).',
     },

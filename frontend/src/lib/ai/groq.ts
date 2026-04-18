@@ -83,9 +83,9 @@ Pre-detected Security Issues: ${JSON.stringify(params.security_issues)}
 Code to review:
 ${params.code_chunk}
 
-Identify the top 3 most impactful issues. Frame each issue appropriate to a ${params.career_tier} developer.
+Strictly identify the top 3 most impactful *negative* issues. You must be brutal, highly critical, and objectively enforce production-grade enterprise standards. Do not sugarcoat. Base your findings ONLY on the provided code evidence. Ignore positive aspects. If the user's setup matches tutorial boilerplates, punish them for lacking architectural depth. FRAME each issue as a critical flaw of the user's specific bad approach.
 
-Respond ONLY with a valid JSON array:
+Respond ONLY with a valid JSON array matching this format:
 [
   {
     "file": "${params.filename}",
@@ -140,7 +140,7 @@ Tutorial clone repos (do NOT use as lead points): ${JSON.stringify(params.is_tut
 Original resume bullets:
 ${params.original_bullets.map((b, i) => `${i + 1}. ${b}`).join('\n')}
 
-Rewrite each bullet grounded ONLY in audit evidence. Remove unverified claims. Add quantifiable signals.
+Rewrite each bullet grounded ONLY in the audit evidence. Be brutal and completely strict. Remove ALL unverified generic fluff, buzzwords, and vague claims. If the user claims 'Architected system' but the codebase is a tutorial clone or basic CRUD, explicitly debunk it and assign 'low' confidence. Base the analysis specifically on the user's verified contributions.
 
 Respond ONLY with a valid JSON array:
 [{"original":"...","rewritten":"...","evidence_source":"...","confidence":"high|medium|low"}]`

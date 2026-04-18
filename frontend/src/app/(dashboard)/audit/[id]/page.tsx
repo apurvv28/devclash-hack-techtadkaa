@@ -1,232 +1,197 @@
-import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
-import { supabaseAdmin } from '@/lib/supabase/admin'
-import type { AuditStatusResponse } from '@/types/audit'
-export const dynamic = 'force-dynamic'
+'use client'
 
-interface AuditPageProps {
-  params: Promise<{ id: string }>
+import React, { useEffect, useState, use } from 'react'
+import { useRouter } from 'next/navigation'
+import { CheckCircle2, Circle, Loader2, AlertCircle } from 'lucide-react'
+import { ProgressRing } from '@/components/ui/ProgressRing'
+
+interface LogMessage {
+  id: number
+  text: string
+  timestamp: string
 }
 
-export async function generateMetadata({ params }: AuditPageProps): Promise<Metadata> {
-  const { id } = await params
-  return {
-    title: `Audit ${id.slice(0, 8)}`,
-    description: 'Live audit progress for DevCareer Intelligence',
+const STAGES = [
+  { id: 'queued', label: 'Queued for Analysis' },
+  { id: 'fetching_github', label: 'Fetching GitHub Repositories' },
+  { id: 'analyzing_code', label: 'AST Code Validation & Security Scan' },
+  { id: 'auditing_live', label: 'Live Playwright & Lighthouse Audit' },
+  { id: 'synthesizing_ai', label: 'Groq/Gemini Architecture Synthesis' },
+  { id: 'fetching_market', label: 'Jooble & Remotive Salary Evaluation' },
+]
+
+export default function LiveAuditPage({ params }: { params: Promise<{ id: string }> }) {
+  const unwrappedParams = use(params)
+  const id = unwrappedParams.id
+  const router = useRouter()
+
+  const [progress, setProgress] = useState(0)
+  const [status, setStatus] = useState('queued')
+  const [logs, setLogs] = useState<LogMessage[]>([])
+  const [error, setError] = useState<string | null>(null)
+  
+  // ETA calculation
+  const [startTime] = useState(Date.now())
+  const [eta, setEta] = useState<string>('Calculating...')
+
+  useEffect(() => {
+    if (progress > 0 && progress < 100) {
+      const elapsed = Date.now() - startTime
+      const estimatedTotal = (elapsed / progress) * 100
+      const remainingMs = Math.max(0, estimatedTotal - elapsed)
+      const remainingSecs = Math.ceil(remainingMs / 1000)
+      if (remainingSecs > 60) {
+        setEta(`${Math.floor(remainingSecs / 60)}m ${remainingSecs % 60}s remaining`)
+      } else {
+        setEta(`${remainingSecs}s remaining`)
+      }
+    } else if (progress === 100) {
+      setEta('Complete!')
+    }
+  }, [progress, startTime])
+
+  useEffect(() => {
+    const eventSource = new EventSource(`/api/audit/${id}/stream`)
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        
+        if (data.type === 'error') {
+          setError(data.error)
+          setStatus('failed')
+          eventSource.close()
+          return
+        }
+
+        if (data.progress_percent !== undefined) {
+          setProgress(data.progress_percent)
+        }
+        
+        if (data.stage) {
+          setStatus(data.stage)
+        }
+        
+        if (data.message || data.stage) {
+           const text = data.message || `Switched to stage: ${data.stage}`
+           setLogs(prev => {
+             const newLogs = [...prev, { id: Date.now(), text, timestamp: new Date().toLocaleTimeString() }]
+             return newLogs.slice(-5) // Keep last 5
+           })
+        }
+
+        if (data.type === 'complete' || data.stage === 'complete' || data.progress_percent === 100) {
+          eventSource.close()
+          router.push(`/report/${id}`)
+        }
+      } catch (err) {
+        console.error('Failed to parse SSE message', err)
+      }
+    }
+
+    eventSource.onerror = (err) => {
+      console.error('EventSource failed:', err)
+      setError('Connection to intelligence stream lost.')
+      eventSource.close()
+    }
+
+    return () => {
+      eventSource.close()
+    }
+  }, [id, router])
+
+  const getCurrentStageIndex = () => {
+    return STAGES.findIndex(s => s.id === status)
   }
-}
+  const currentStageIndex = getCurrentStageIndex()
 
-export default async function AuditPage({ params }: AuditPageProps) {
-  const { id } = await params
-
-  const { data: session } = await supabaseAdmin
-    .from('audit_sessions')
-    .select('*')
-    .eq('id', id)
-    .single()
-
-  if (!session) {
-    notFound()
+  if (error || status === 'failed') {
+    return (
+      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center p-8">
+        <div className="bg-white border border-red-200 p-8 rounded-2xl max-w-lg w-full text-center space-y-4 shadow-md">
+          <AlertCircle className="w-16 h-16 text-[#E2001A] mx-auto" />
+          <h2 className="text-2xl font-bold text-[#E2001A]">Audit Pipeline Failed</h2>
+          <p className="text-[#4A5568]">{error || 'An unexpected error occurred during the audit.'}</p>
+          <button 
+            onClick={() => router.push('/dashboard')}
+            className="mt-6 bg-[#003882] hover:bg-[#002B66] text-white px-6 py-2 rounded-lg transition"
+          >
+            Return to Dashboard
+          </button>
+        </div>
+      </div>
+    )
   }
-
-  const statusResponse: AuditStatusResponse = {
-    session,
-    current_stage: session.status,
-    eta_seconds: session.status !== 'complete' && session.status !== 'failed'
-      ? 120
-      : undefined,
-  }
-
-  const isComplete = session.status === 'complete'
-  const isFailed = session.status === 'failed'
-  const isRunning = !isComplete && !isFailed
 
   return (
-    <main
-      style={{
-        minHeight: '100vh',
-        background: '#0A0F1E',
-        padding: '2rem',
-      }}
-    >
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        <nav style={{ marginBottom: '2rem' }}>
-          <a href="/dashboard" style={{ color: '#8B9BB4', textDecoration: 'none', fontSize: '0.875rem' }}>
-            ← Back to Dashboard
-          </a>
-        </nav>
-
-        <div
-          style={{
-            background: '#0D1530',
-            border: `1px solid ${isFailed ? '#FF4444' : isComplete ? '#00C896' : '#1E2D4A'}`,
-            borderRadius: '1rem',
-            padding: '2rem',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
-            <div>
-              <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#E8EDF5' }}>
-                Auditing @{session.github_username}
-              </h1>
-              <p style={{ color: '#8B9BB4', fontSize: '0.875rem', marginTop: '0.25rem' }}>
-                {session.project_urls?.length ?? 0} repositories · Started{' '}
-                {new Date(session.created_at).toLocaleString()}
-              </p>
-            </div>
-            <span
-              style={{
-                padding: '0.375rem 1rem',
-                borderRadius: '9999px',
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                background: isFailed
-                  ? 'rgba(255,68,68,0.1)'
-                  : isComplete
-                    ? 'rgba(0,200,150,0.1)'
-                    : 'rgba(0,212,255,0.1)',
-                color: isFailed ? '#FF4444' : isComplete ? '#00C896' : '#00D4FF',
-              }}
-            >
-              {session.status.replace(/_/g, ' ')}
-            </span>
-          </div>
-
-          {/* Progress bar */}
-          <div
-            style={{
-              background: '#1E2D4A',
-              borderRadius: '9999px',
-              height: '8px',
-              overflow: 'hidden',
-              marginBottom: '1rem',
-            }}
-          >
-            <div
-              style={{
-                height: '100%',
-                width: `${session.progress_percent}%`,
-                background: isFailed
-                  ? '#FF4444'
-                  : isComplete
-                    ? 'linear-gradient(90deg, #00C896, #00D4FF)'
-                    : 'linear-gradient(90deg, #00D4FF, #00FFEA)',
-                borderRadius: '9999px',
-                transition: 'width 1.5s cubic-bezier(0.4, 0, 0.2, 1)',
-                boxShadow: isRunning ? '0 0 12px rgba(0,212,255,0.5)' : 'none',
-              }}
-            />
-          </div>
-          <p style={{ color: '#8B9BB4', fontSize: '0.875rem', marginBottom: '2rem' }}>
-            {session.progress_percent}% complete
-            {statusResponse.eta_seconds && ` · ~${Math.round(statusResponse.eta_seconds / 60)} min remaining`}
-          </p>
-
-          {/* Stage indicators */}
-          <div style={{ display: 'grid', gap: '0.75rem' }}>
-            {[
-              { key: 'fetching_github', label: 'Fetching GitHub data' },
-              { key: 'analyzing_code', label: 'Analyzing code quality & complexity' },
-              { key: 'auditing_live', label: 'Live site audit (Lighthouse)' },
-              { key: 'synthesizing_ai', label: 'AI synthesis & skill profiling' },
-              { key: 'fetching_market', label: 'Job market matching' },
-              { key: 'complete', label: 'Report ready' },
-            ].map((stage) => {
-              const stages = ['fetching_github', 'analyzing_code', 'auditing_live', 'synthesizing_ai', 'fetching_market', 'complete']
-              const currentIdx = stages.indexOf(session.status)
-              const stageIdx = stages.indexOf(stage.key)
-              const isDone = stageIdx < currentIdx || session.status === 'complete'
-              const isCurrent = stage.key === session.status
-
-              return (
-                <div
-                  key={stage.key}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    padding: '0.75rem 1rem',
-                    background: isCurrent ? 'rgba(0,212,255,0.05)' : 'transparent',
-                    border: isCurrent ? '1px solid rgba(0,212,255,0.2)' : '1px solid transparent',
-                    borderRadius: '0.5rem',
-                  }}
-                >
-                  <span style={{ fontSize: '1rem' }}>
-                    {isDone ? '✅' : isCurrent ? '⏳' : '○'}
-                  </span>
-                  <span
-                    style={{
-                      color: isDone ? '#00C896' : isCurrent ? '#00D4FF' : '#4A5568',
-                      fontSize: '0.875rem',
-                    }}
-                  >
-                    {stage.label}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-
-          {isComplete && (
-            <div style={{ marginTop: '2rem', textAlign: 'center' }}>
-              <a
-                id="view-report-btn"
-                href={`/report/${id}`}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  background: '#00C896',
-                  color: '#0A0F1E',
-                  fontWeight: 700,
-                  padding: '0.875rem 2rem',
-                  borderRadius: '0.75rem',
-                  textDecoration: 'none',
-                }}
-              >
-                View Full Report →
-              </a>
-            </div>
-          )}
-
-          {isFailed && (
-            <div style={{ marginTop: '2rem', textAlign: 'center' }}>
-              <a
-                href={`/api/audit/${id}/resume`}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  background: '#FFB800',
-                  color: '#0A0F1E',
-                  fontWeight: 700,
-                  padding: '0.875rem 2rem',
-                  borderRadius: '0.75rem',
-                  textDecoration: 'none',
-                }}
-              >
-                Resume Audit
-              </a>
-            </div>
-          )}
+    <div className="min-h-screen bg-[#F8F9FA] text-[#1A202C] p-8">
+      <div className="max-w-4xl mx-auto space-y-12 py-8">
+        <div className="text-center space-y-4">
+          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#1A202C]">Active Audit Pipeline</h1>
+          <p className="text-[#4A5568] text-lg">Real-time architecture and market intelligence extraction.</p>
         </div>
 
-        {isRunning && (
-          <>
-            <p
-              style={{
-                textAlign: 'center',
-                color: '#4A5568',
-                fontSize: '0.75rem',
-                marginTop: '1.5rem',
-              }}
-            >
-              This page auto-refreshes. You can also close it and come back later.
-            </p>
-            <meta httpEquiv="refresh" content="3" />
-          </>
-        )}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center bg-white border border-[#E2E8F0] p-8 rounded-3xl shadow-lg">
+          <div className="flex flex-col items-center justify-center space-y-6">
+            <ProgressRing percent={progress} size={280} strokeWidth={16} color="#003882" />
+            <div className="text-center">
+              <h2 className="text-3xl font-bold text-[#003882] capitalize drop-shadow-sm">
+                {status.replace('_', ' ')}
+              </h2>
+              <p className="text-[#718096] mt-2 font-mono">{eta}</p>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <h3 className="text-xl font-semibold text-[#1A202C] border-b border-[#E2E8F0] pb-2">Execution Stages</h3>
+            <div className="space-y-4">
+              {STAGES.map((stage, idx) => {
+                const isCompleted = idx < currentStageIndex || status === 'complete'
+                const isCurrent = idx === currentStageIndex && status !== 'complete'
+                const isPending = idx > currentStageIndex && status !== 'complete'
+
+                return (
+                  <div key={stage.id} className="flex items-center space-x-4">
+                    <div className="flex-shrink-0">
+                      {isCompleted && <CheckCircle2 className="w-7 h-7 text-emerald-500" />}
+                      {isCurrent && <Loader2 className="w-7 h-7 text-[#00A1E4] animate-spin" />}
+                      {isPending && <Circle className="w-7 h-7 text-[#CBD5E0]" />}
+                    </div>
+                    <div>
+                      <p className={`font-medium text-lg ${
+                        isCompleted ? 'text-[#1A202C]' : 
+                        isCurrent ? 'text-[#003882] drop-shadow-sm' : 
+                        'text-[#CBD5E0]'
+                      }`}>
+                        {stage.label}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden font-mono text-sm max-w-4xl mx-auto shadow-sm">
+          <div className="bg-[#F8F9FA] px-4 py-2 border-b border-[#E2E8F0] flex justify-between">
+            <span className="text-[#4A5568]">Live Process Logs</span>
+            <span className="text-emerald-500 animate-pulse">● Live</span>
+          </div>
+          <div className="p-4 space-y-2 max-h-48 overflow-hidden min-h-[120px]">
+            {logs.length === 0 ? (
+              <p className="text-[#CBD5E0] italic">Waiting for orchestrator streams...</p>
+            ) : (
+              logs.map(log => (
+                <div key={log.id} className="text-[#1A202C] animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <span className="text-[#003882] mr-3">[{log.timestamp}]</span>
+                  {log.text}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
-    </main>
+    </div>
   )
 }

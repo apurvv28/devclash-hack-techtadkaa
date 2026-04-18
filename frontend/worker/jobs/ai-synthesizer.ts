@@ -124,12 +124,22 @@ export async function handleAISynthesis(job: Job): Promise<void> {
 
   // ── Rewrite resume bullets if provided (Groq primary, Gemini fallback) ──
   if (session?.resume_text) {
-    const bullets = session.resume_text
-      .split('\n')
-      .filter((l: string) => l.trim().startsWith('•') || l.trim().startsWith('-'))
-      .map((l: string) => l.replace(/^[•\-]\s*/, '').trim())
-      .filter((l: string) => l.length > 20)
+    // Split by newlines, literal bullets, or numeric bullet encodings like 210
+    let lines = session.resume_text.split(/(?:\n|•|\*|—|-(?=\s)|210\s+)/g)
+    
+    let bullets = lines
+      .map((l: string) => l.trim().replace(/^[\d\s]+/, ''))
+      .filter((l: string) => l.length > 20 && l.length < 600)
       .slice(0, 10)
+
+    if (bullets.length === 0) {
+      // Fallback: just split by periods
+      bullets = session.resume_text
+        .split(/\.\s+/)
+        .map((l: string) => l.trim().replace(/^[\d\s]+/, ''))
+        .filter((l: string) => l.length > 20 && l.length < 1000)
+        .slice(0, 8)
+    }
 
     if (bullets.length > 0) {
       const evidence = repo_analyses.map(r => ({
@@ -167,19 +177,27 @@ export async function handleAISynthesis(job: Job): Promise<void> {
   console.log(`[AISynthesizer] AI synthesis complete. ${flawFindings.length} flaw findings generated.`)
   await updateSessionStatus(session_id, 'synthesizing_ai', 93)
 
-  // Store everything in audit_reports (non-fatal if table doesn't exist)
-  const { error: reportErr } = await supabaseAdmin.from('audit_reports').upsert({
+  // Store roadmap and update skill_profile with flaw findings
+  const { error: rmErr } = await supabaseAdmin.from('roadmaps').upsert({
     id: crypto.randomUUID(),
     session_id,
-    repo_analyses,
-    skill_profile: skillProfile,
-    roadmap,
-    flaw_findings: flawFindings,
-    generated_at: new Date().toISOString(),
+    week_breakdown: roadmap.week_breakdown || [],
+    priority_skills: roadmap.priority_skills || [],
+    complexity_gap_prescription: roadmap.complexity_gap_prescription,
+    archetype_prescription: roadmap.archetype_prescription,
+    resume_lead_projects: roadmap.resume_lead_projects || [],
+    resume_bury_projects: roadmap.resume_bury_projects || [],
+    rewritten_bullets: roadmap.rewritten_bullets || [],
+    created_at: new Date().toISOString(),
   })
-  if (reportErr) {
-    console.warn('[AISynthesizer] Failed to save audit_report (non-fatal):', reportErr.message)
-  }
+  if (rmErr) console.warn('[AISynthesizer] Failed to save roadmap:', rmErr.message)
+
+  const { error: spErr } = await supabaseAdmin.from('skill_profiles')
+    .update({ flaw_findings: flawFindings })
+    .eq('session_id', session_id)
+  
+  if (spErr) console.warn('[AISynthesizer] Failed to update skill profile findings:', spErr.message)
+
 
   await updateSessionStatus(session_id, 'synthesizing_ai', 94)
   await new Promise(r => setTimeout(r, 300))

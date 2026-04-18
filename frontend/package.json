@@ -21,6 +21,7 @@
     "@supabase/supabase-js": "^2.103.3",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.37.0",
+    "autoprefixer": "^10.5.0",
     "axios": "^1.15.0",
     "bullmq": "^5.74.1",
     "chrome-launcher": "^1.2.1",
@@ -36,11 +37,14 @@
     "next-auth": "^5.0.0-beta.31",
     "p-limit": "^7.3.0",
     "p-retry": "^7.1.1",
+    "pdf-parse": "^2.4.5",
+    "postcss": "^8.5.10",
     "prisma": "^6.19.3",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "recharts": "^3.8.1",
     "tailwind-merge": "^3.5.0",
+    "tailwindcss": "^3.4.4",
     "tree-sitter": "^0.21.1",
     "tree-sitter-javascript": "^0.25.0",
     "tree-sitter-python": "^0.25.0",
@@ -50,7 +54,6 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
-    "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -58,7 +61,6 @@
     "eslint-config-next": "16.2.4",
     "lighthouse": "^12.8.2",
     "playwright": "^1.59.1",
-    "tailwindcss": "^4",
     "typescript": "^5"
   }
 }

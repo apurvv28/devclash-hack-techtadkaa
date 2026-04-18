@@ -1,16 +1,18 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
-  --color-primary: #0A0F1E;
-  --color-accent: #00D4FF;
+  --color-primary: #F8F9FA;
+  --color-accent: #003882;
   --color-success: #00C896;
   --color-warning: #FFB800;
-  --color-danger: #FF4444;
-  --color-card: #0D1530;
-  --color-border: #1E2D4A;
-  --color-text-primary: #E8EDF5;
-  --color-text-secondary: #8B9BB4;
-  --color-text-muted: #4A5568;
+  --color-danger: #E2001A;
+  --color-card: #FFFFFF;
+  --color-border: #E2E8F0;
+  --color-text-primary: #1A202C;
+  --color-text-secondary: #4A5568;
+  --color-text-muted: #718096;
 }
 
 * {

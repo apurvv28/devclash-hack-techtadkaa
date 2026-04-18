@@ -1,6 +1,6 @@
 import type { Job } from 'bullmq'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { getRepository, getCommits, getRepoTree, parseRepoUrl } from '@/lib/github/rest'
+import { getRepository, getCommits, getCommitsByAuthor, getRepoTree, parseRepoUrl } from '@/lib/github/rest'
 import { getLanguageBreakdown } from '@/lib/github/graphql'
 import { getQueue, QUEUE_NAMES } from '@/lib/queue/client'
 import type { GitHubRepo, GitHubCommit } from '@/types/github'
@@ -61,7 +61,7 @@ export async function handleGitHubFetch(job: Job): Promise<void> {
       console.log(`[GitHubFetcher] Got repo metadata. Branch: ${branch}`)
 
       const [commits, languages, tree] = await Promise.all([
-        getCommits(owner, repoName, branch, token),
+        getCommitsByAuthor(owner, repoName, github_username, token),
         getLanguageBreakdown(owner, repoName, token),
         getRepoTree(owner, repoName, branch, token),
       ])
