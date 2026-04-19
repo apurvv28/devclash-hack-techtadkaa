@@ -1,5 +1,5 @@
 import Groq from 'groq-sdk'
-import type { Roadmap, SalaryGapSkill, ResumeBullet, AuditFlawFinding, SecurityIssue } from '@/types/index'
+import type { Roadmap, SalaryGapSkill, ResumeRecommendation, AuditFlawFinding, SecurityIssue } from '@/types/index'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY! })
@@ -113,10 +113,9 @@ Respond ONLY with a valid JSON array matching this format:
   return []
 }
 
-// ─── Resume Rewrite (Primary: Groq) ────────────────────────────────────────────
-
-export async function generateResumeRewrite(params: {
-  original_bullets: string[]
+// ─── Resume Recommendation (Primary: Groq) ──────────────────────────────────────
+export async function generateResumeRecommendations(params: {
+  resume_text: string
   audit_evidence: {
     repo_name: string
     complexity_tier: number
@@ -129,29 +128,29 @@ export async function generateResumeRewrite(params: {
   is_tutorial_repos: string[]
   overall_tier: string
   github_username: string
-}): Promise<ResumeBullet[]> {
-  const prompt = `You are a technical recruiter with 10 years experience who also writes code.
-
+}): Promise<ResumeRecommendation[]> {
+  const prompt = `You are a technical recruiter with 10 years experience serving as a developer career coach.
+  
 Developer GitHub: ${params.github_username}
 Verified Overall Tier: ${params.overall_tier}
 Audit Evidence: ${JSON.stringify(params.audit_evidence)}
 Tutorial clone repos (do NOT use as lead points): ${JSON.stringify(params.is_tutorial_repos)}
 
-Original resume bullets:
-${params.original_bullets.map((b, i) => `${i + 1}. ${b}`).join('\n')}
+Original resume text (raw):
+${params.resume_text.slice(0, 2000)}
 
-Rewrite each bullet grounded ONLY in the audit evidence. Be brutal and completely strict. Remove ALL unverified generic fluff, buzzwords, and vague claims. If the user claims 'Architected system' but the codebase is a tutorial clone or basic CRUD, explicitly debunk it and assign 'low' confidence. Base the analysis specifically on the user's verified contributions.
+Provide exactly 3 to 4 actionable, hard-hitting recommendations on how the developer can make their resume stronger and upgrade their projects to "production level". Ground the feedback BOTH in what you see structurally wrong/weak in the resume text, and what the code audit evidence shows they are lacking.
 
-Respond ONLY with a valid JSON array:
-[{"original":"...","rewritten":"...","evidence_source":"...","confidence":"high|medium|low"}]`
+Respond ONLY with a valid JSON array matching this format:
+[{"title":"...","recommendation":"...","evidence_source":"...","priority":"high|medium|low"}]`
 
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const raw = await callGroq(prompt, 2000)
       const parsed = JSON.parse(extractJSON(raw))
-      if (Array.isArray(parsed)) return parsed as ResumeBullet[]
+      if (Array.isArray(parsed)) return parsed as ResumeRecommendation[]
     } catch (err) {
-      console.warn(`[Groq:ResumeRewrite] Attempt ${attempt + 1} failed:`, (err as Error).message)
+      console.warn(`[Groq:ResumeRecommendations] Attempt ${attempt + 1} failed:`, (err as Error).message)
     }
   }
   return []
@@ -225,7 +224,7 @@ Respond ONLY with valid JSON:
     archetype_prescription: parsed.archetype_prescription || '',
     resume_lead_projects: [],
     resume_bury_projects: params.resume_bury_repos,
-    rewritten_bullets: [] as ResumeBullet[],
+    recommendations: [] as ResumeRecommendation[],
   }
 
   // Save to DB (non-fatal if it fails)

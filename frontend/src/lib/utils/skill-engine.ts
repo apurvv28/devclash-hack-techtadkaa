@@ -56,9 +56,85 @@ export function deriveSkillProfile(input: SkillEngineInput): SkillProfile {
   const mediumIssues = repo_analyses.flatMap((r) => r.security_issues).filter((i) => i.severity === 'medium').length
   const baseSecurity = 50 + Math.max(...repo_analyses.map((r) => r.complexity_tier), 1) * 5
   const securityScore = Math.max(0, baseSecurity - (criticalIssues * 15) - (mediumIssues * 5))
+
+  // ── DB Design Score: derived from actual codebase evidence ──
+  // Uses data_access_score as base, then adds/deducts based on architecture patterns
+  const rawDataAccess = avgDimension('data_access_score')
+  const maxComplexity = Math.max(...repo_analyses.map((r) => r.complexity_tier))
   
-  const dbDesignScore = avgDimension('data_access_score')
-  const systemDesignScore = Math.max(...repo_analyses.map((r) => r.complexity_weight * 50), Number(avgDimension('modularity_score')))
+  // Check codebase for DB-related patterns across all repos
+  let dbBonuses = 0
+  let dbEvidence: string[] = []
+  for (const repo of repo_analyses) {
+    // ORM / database abstraction (already factored into data_access_score somewhat)
+    if (repo.architectural_pattern) {
+      const arch = repo.architectural_pattern.toLowerCase()
+      if (arch.includes('prisma') || arch.includes('sequelize') || arch.includes('mongoose') || arch.includes('typeorm')) {
+        dbBonuses += 10
+        dbEvidence.push('ORM usage')
+      }
+    }
+    // Higher complexity means more sophisticated data modeling
+    if (repo.complexity_tier >= 3) {
+      dbBonuses += 10
+      dbEvidence.push('Complex project tier')
+    }
+    if (repo.complexity_tier >= 4) {
+      dbBonuses += 15
+      dbEvidence.push('Advanced project tier')
+    }
+    // Service layer existence implies proper data separation
+    if (repo.service_layer_score > 50) {
+      dbBonuses += 10
+      dbEvidence.push('Service layer separation')
+    }
+  }
+  // Cap DB bonuses and compute final score
+  dbBonuses = Math.min(dbBonuses, 35)
+  let dbDesignScore = Math.min(100, rawDataAccess + dbBonuses)
+  
+  // Apply complexity ceiling: if max complexity is <= 2, cap DB design
+  if (maxComplexity <= 2) {
+    dbDesignScore = Math.min(dbDesignScore, 50) // Can't be above Mid for trivial projects
+  }
+  if (maxComplexity <= 1) {
+    dbDesignScore = Math.min(dbDesignScore, 35) // Can't be above Junior+ for hello-world
+  }
+
+  // ── System Design Score: derived from architectural complexity evidence ──
+  // Uses modularity, complexity tier, and architectural pattern as inputs
+  const rawModularity = avgDimension('modularity_score')
+  const avgServiceLayer = avgDimension('service_layer_score')
+  
+  let systemDesignBase = (rawModularity * 0.25) + (avgServiceLayer * 0.25) + (avgDimension('error_handling_score') * 0.15) + (avgDimension('api_design_score') * 0.15) + (avgDimension('input_validation_score') * 0.1) + (avgDimension('testing_score') * 0.1)
+  
+  // Architecture-aware bonuses
+  let sysDesignBonuses = 0
+  for (const repo of repo_analyses) {
+    // Complexity tier directly reflects architectural depth
+    if (repo.complexity_tier >= 3) sysDesignBonuses += 10
+    if (repo.complexity_tier >= 4) sysDesignBonuses += 15
+    if (repo.complexity_tier >= 5) sysDesignBonuses += 15 // Advanced architecture
+    
+    // Multi-module architecture shows system thinking
+    if (repo.analysis_scope === 'module') sysDesignBonuses += 5
+    
+    // High modularity + high service layer = good system design
+    if (repo.modularity_score > 70 && repo.service_layer_score > 60) {
+      sysDesignBonuses += 10
+    }
+  }
+  
+  sysDesignBonuses = Math.min(sysDesignBonuses, 40)
+  let systemDesignScore = Math.min(100, systemDesignBase + sysDesignBonuses)
+  
+  // Apply complexity ceiling: system design can't be inflated for simple projects
+  if (maxComplexity <= 2) {
+    systemDesignScore = Math.min(systemDesignScore, 50)
+  }
+  if (maxComplexity <= 1) {
+    systemDesignScore = Math.min(systemDesignScore, 35)
+  }
 
   // Compute archetype from all repo analyses
   const archetypes = repo_analyses.map((r) => r.commit_archetype)
@@ -97,8 +173,12 @@ export function deriveSkillProfile(input: SkillEngineInput): SkillProfile {
 
   if (testingScore < 40) gapAreas.push('Testing practices')
   if (securityScore < 60) gapAreas.push('Security awareness')
+  if (dbDesignScore < 40) gapAreas.push('Database design')
+  if (systemDesignScore < 40) gapAreas.push('System design')
   if (backendScore > 70) strengths.push('Backend service architecture')
   if (frontendScore > 70) strengths.push('Frontend engineering')
+  if (systemDesignScore > 65) strengths.push('System design')
+  if (dbDesignScore > 65) strengths.push('Database architecture')
 
   return {
     id: `sp-${session_id}`,

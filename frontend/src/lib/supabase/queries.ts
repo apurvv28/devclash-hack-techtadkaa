@@ -783,6 +783,6 @@ function mapRoadmapRow(row: any): Roadmap {
     archetype_prescription: row.archetype_prescription ?? '',
     resume_lead_projects: row.resume_lead_projects ?? [],
     resume_bury_projects: row.resume_bury_projects ?? [],
-    rewritten_bullets: row.rewritten_bullets ?? [],
+    recommendations: row.rewritten_bullets ?? [],
   }
 }

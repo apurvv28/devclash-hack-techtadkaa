@@ -51,14 +51,27 @@ export function AuditSubmissionForm({ username }: { username: string }) {
       if (!res.ok) throw new Error(data.error || 'Failed to parse resume')
 
       const links: string[] = data.links || []
+      const deployLinks: string[] = data.deployment_links || []
+      const messages: string[] = []
+
       if (links.length > 0) {
         // filter out empty slots and append new links uniquely
         const currentValidUrls = urls.filter(u => u.trim() !== '')
         const newSet = new Set([...currentValidUrls, ...links])
         setUrls(Array.from(newSet))
-        setParseMsg(`Successfully extracted ${links.length} repository link(s) from resume!`)
+        messages.push(`${links.length} repository link(s)`)
+      }
+
+      // Auto-fill deployment URL if found in resume and field is empty
+      if (deployLinks.length > 0 && !deploymentUrl.trim()) {
+        setDeploymentUrl(deployLinks[0])
+        messages.push(`${deployLinks.length} deployment link(s)`)
+      }
+
+      if (messages.length > 0) {
+        setParseMsg(`Successfully extracted ${messages.join(' and ')} from resume!`)
       } else {
-        setParseMsg('No GitHub repository links were found in the resume.')
+        setParseMsg('No GitHub repository or deployment links were found in the resume.')
       }
 
       if (data.text) {

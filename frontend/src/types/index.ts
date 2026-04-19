@@ -173,7 +173,7 @@ export interface Roadmap {
   archetype_prescription: string
   resume_lead_projects: string[]
   resume_bury_projects: string[]
-  rewritten_bullets: ResumeBullet[]
+  recommendations: ResumeRecommendation[]
 }
 
 export interface WeekPlan {
@@ -191,11 +191,11 @@ export interface RoadmapTask {
   estimated_hours: number
 }
 
-export interface ResumeBullet {
-  original: string
-  rewritten: string
+export interface ResumeRecommendation {
+  title: string
+  recommendation: string
   evidence_source: string
-  confidence: 'high' | 'medium' | 'low'
+  priority: 'high' | 'medium' | 'low'
 }
 
 export interface AuditFlawFinding {

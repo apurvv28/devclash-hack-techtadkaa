@@ -7,7 +7,7 @@ interface ResumeDamageReportProps {
   leadProjects: string[]
   buryProjects: string[]
   repoAnalyses: RepoAnalysis[]
-  rewrittenBullets?: { original: string; rewritten: string; evidence_source: string; confidence: 'high' | 'medium' | 'low' }[]
+  recommendations?: { title: string; recommendation: string; evidence_source: string; priority: 'high' | 'medium' | 'low' }[]
 }
 
 const COMPLEXITY_LABELS: Record<ComplexityTier, string> = {
@@ -18,7 +18,7 @@ const COMPLEXITY_LABELS: Record<ComplexityTier, string> = {
   5: 'Advanced',
 }
 
-export function ResumeDamageReport({ leadProjects, buryProjects, repoAnalyses, rewrittenBullets }: ResumeDamageReportProps) {
+export function ResumeDamageReport({ leadProjects, buryProjects, repoAnalyses, recommendations }: ResumeDamageReportProps) {
   const leadRepos = repoAnalyses.filter((r) => leadProjects.includes(r.repo_name))
   const buryRepos = repoAnalyses.filter((r) => buryProjects.includes(r.repo_name))
   // buryProjects that aren't in repoAnalyses (still should be shown)
@@ -99,68 +99,57 @@ export function ResumeDamageReport({ leadProjects, buryProjects, repoAnalyses, r
         </div>
       </div>
 
-      {/* Rewritten Bullets */}
-      {rewrittenBullets && rewrittenBullets.length > 0 && (
-        <ResumeBulletRewriter bullets={rewrittenBullets} />
+      {/* Strategic Recommendations */}
+      {recommendations && recommendations.length > 0 && (
+        <ResumeRecommendationsPanel recommendations={recommendations} />
       )}
     </div>
   )
 }
 
-/* ─── Inline Bullet Rewriter ─── */
+/* ─── Inline Recommendations Panel ─── */
 
-interface ResumeBulletRewriterProps {
-  bullets: { original: string; rewritten: string; evidence_source: string; confidence: 'high' | 'medium' | 'low' }[]
+interface ResumeRecommendationsPanelProps {
+  recommendations: { title: string; recommendation: string; evidence_source: string; priority: 'high' | 'medium' | 'low' }[]
 }
 
-const CONFIDENCE_STYLES: Record<string, string> = {
-  high: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+const PRIORITY_STYLES: Record<string, string> = {
+  high: 'bg-red-50 text-[#E2001A] border-red-200',
   medium: 'bg-amber-50 text-amber-700 border-amber-200',
-  low: 'bg-red-50 text-[#E2001A] border-red-200',
+  low: 'bg-blue-50 text-[#003882] border-blue-200',
 }
 
-function ResumeBulletRewriter({ bullets }: ResumeBulletRewriterProps) {
-  const [copied, setCopied] = React.useState(false)
-
-  const handleCopyAll = async () => {
-    const text = bullets.map((b) => b.rewritten).join('\n• ')
-    await navigator.clipboard.writeText(`• ${text}`)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
+function ResumeRecommendationsPanel({ recommendations }: ResumeRecommendationsPanelProps) {
   return (
     <div className="bg-white border border-[#E2E8F0] rounded-2xl p-5 shadow-sm">
       <div className="flex items-center justify-between mb-4">
-        <h4 className="font-semibold text-[#1A202C] text-sm">Resume Bullet Rewriter</h4>
-        <button
-          onClick={handleCopyAll}
-          className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-[#003882] text-white hover:bg-[#002B66] transition"
-        >
-          {copied ? '✓ Copied!' : 'Copy All Rewritten'}
-        </button>
+        <div>
+          <h4 className="font-semibold text-[#1A202C] text-sm md:text-base">Strategic Resume Recommendations</h4>
+          <p className="text-[11px] text-[#718096] mt-0.5">AI-generated points to upgrade your resume to production-level</p>
+        </div>
       </div>
 
       <div className="space-y-4">
-        {bullets.map((bullet, idx) => (
-          <div key={idx} className="grid grid-cols-1 md:grid-cols-[1fr_1fr] gap-3 border border-[#E2E8F0] rounded-xl p-4">
-            {/* Original */}
-            <div className="bg-[#F8F9FA] rounded-lg px-4 py-3 border border-[#E2E8F0]">
-              <p className="text-[10px] text-[#718096] uppercase tracking-wider font-bold mb-1">Original</p>
-              <p className="text-sm text-[#718096] leading-relaxed">{bullet.original}</p>
-            </div>
-
-            {/* Rewritten */}
-            <div className="bg-[#F0F7FF] rounded-lg px-4 py-3 border border-[#003882]/15">
-              <div className="flex items-center justify-between mb-1">
-                <p className="text-[10px] text-[#003882] uppercase tracking-wider font-bold">Rewritten</p>
-                <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase ${CONFIDENCE_STYLES[bullet.confidence]}`}>
-                  {bullet.confidence}
+        {recommendations.map((rec, idx) => (
+          <div key={idx} className="bg-[#F8F9FA] rounded-xl px-4 py-4 border border-[#E2E8F0]">
+            <div className="flex items-start justify-between mb-2">
+              <h5 className="font-semibold text-[#1A202C] text-sm leading-tight flex items-center gap-2">
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-[#003882]/10 text-[#003882] text-[10px]">
+                  {idx + 1}
                 </span>
-              </div>
-              <p className="text-sm text-[#1A202C] font-medium leading-relaxed">{bullet.rewritten}</p>
-              <p className="text-[10px] text-[#718096] italic mt-2">Source: {bullet.evidence_source}</p>
+                {rec.title}
+              </h5>
+              <span className={`text-[10px] px-2 py-0.5 rounded border font-bold uppercase ${PRIORITY_STYLES[rec.priority] || PRIORITY_STYLES.medium}`}>
+                {rec.priority} Priority
+              </span>
             </div>
+            <p className="text-[13px] text-[#4A5568] leading-relaxed mb-3">
+              {rec.recommendation}
+            </p>
+            <p className="text-[10px] text-[#718096] italic bg-white border border-[#E2E8F0] px-3 py-1.5 rounded-lg inline-block shadow-sm">
+              <span className="font-semibold text-[#4A5568] not-italic mr-1">Evidence Source:</span> 
+              {rec.evidence_source}
+            </p>
           </div>
         ))}
       </div>

@@ -254,3 +254,52 @@ export async function getCommits(
     }) as unknown as Promise<GitHubCommit[]>
   })
 }
+
+/**
+ * Extract deployment/live URL from a GitHub repository's metadata.
+ * Checks the repo's homepage field first, then scans the description
+ * and About section for deployment URLs.
+ */
+const DEPLOYMENT_DOMAIN_PATTERNS = [
+  'vercel.app', 'netlify.app', 'netlify.com', 'railway.app',
+  'render.com', 'onrender.com', 'fly.dev', 'fly.io',
+  'heroku.com', 'herokuapp.com', 'github.io', 'pages.dev',
+  'surge.sh', 'firebase.app', 'firebaseapp.com', 'web.app',
+  'cloudflare.com', 'workers.dev', 'amplifyapp.com',
+  'azurewebsites.net', 'azurestaticapps.net',
+]
+
+export function extractRepoDeploymentUrl(repo: GitHubRepo): string | null {
+  // Priority 1: GitHub "homepage" field (About section's website)
+  if (repo.homepage && repo.homepage.trim()) {
+    const homepage = repo.homepage.trim()
+    if (homepage.startsWith('http')) {
+      // Verify it's not just a link to docs or GitHub itself
+      try {
+        const hostname = new URL(homepage).hostname.toLowerCase()
+        const isGitHub = hostname.endsWith('github.com')
+        if (!isGitHub) {
+          console.log(`[GitHub] Found homepage deployment URL for ${repo.name}: ${homepage}`)
+          return homepage
+        }
+      } catch { /* invalid URL, skip */ }
+    }
+  }
+
+  // Priority 2: Check description for deployment URLs
+  if (repo.description) {
+    const urlPattern = /https?:\/\/[a-zA-Z0-9._\-\/~%+?&#=@:]+/gi
+    const urls = repo.description.match(urlPattern) || []
+    for (const url of urls) {
+      try {
+        const hostname = new URL(url).hostname.toLowerCase()
+        if (DEPLOYMENT_DOMAIN_PATTERNS.some(d => hostname.endsWith(d))) {
+          console.log(`[GitHub] Found deployment URL in description for ${repo.name}: ${url}`)
+          return url
+        }
+      } catch { /* skip invalid URLs */ }
+    }
+  }
+
+  return null
+}

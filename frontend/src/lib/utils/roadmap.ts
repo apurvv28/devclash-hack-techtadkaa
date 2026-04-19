@@ -152,7 +152,7 @@ export function generateRoadmap(input: {
     archetype_prescription: archetypePrescription,
     resume_lead_projects: lead_projects,
     resume_bury_projects: bury_projects,
-    rewritten_bullets: [], // Populated by AI synthesis stage
+    recommendations: [], // Populated by AI synthesis stage
   }
 }
 

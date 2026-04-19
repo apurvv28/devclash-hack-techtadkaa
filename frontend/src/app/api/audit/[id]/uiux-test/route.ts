@@ -296,6 +296,16 @@ export async function POST(
 
         const videoUrl = fs.existsSync(videoFilePath) ? `/uiux-videos/${sessionId}.webm` : null
 
+        const finalResult = {
+          overall_score: overallScore,
+          responsiveness: { score: responsivenessScore, max: 30, details: viewportResults },
+          console_errors: { score: consoleScore, max: 15, errors: consoleErrors.slice(0, 5), count: consoleErrors.length },
+          performance: { score: performanceScore, max: 15, page_load_ms: pageLoadMs },
+          accessibility: { score: a11yScore, max: 20, issues: a11yIssues },
+          interactivity: { score: interactiveScore, max: 20, found: visibleElements.length, clicked: clickedCount, working: workingCount },
+          video_url: videoUrl,
+        }
+
         // ─── Update database ───
         try {
           const { supabaseAdmin } = await import('@/lib/supabase/admin')
@@ -303,6 +313,15 @@ export async function POST(
             .from('audit_sessions')
             .update({ ui_ux_score: overallScore, ui_ux_skipped: false })
             .eq('id', sessionId)
+            
+          // Store the full result in live_app_audits
+          await supabaseAdmin
+            .from('live_app_audits')
+            .insert({
+              session_id: sessionId,
+              url: deployment_url,
+              raw_lighthouse: finalResult
+            })
         } catch (e: any) {
           console.warn('[UiUxTest API] DB update failed:', e.message)
         }
@@ -312,15 +331,7 @@ export async function POST(
           step: 'complete',
           message: 'UI/UX testing complete!',
           progress: 100,
-          result: {
-            overall_score: overallScore,
-            responsiveness: { score: responsivenessScore, max: 30, details: viewportResults },
-            console_errors: { score: consoleScore, max: 15, errors: consoleErrors.slice(0, 5), count: consoleErrors.length },
-            performance: { score: performanceScore, max: 15, page_load_ms: pageLoadMs },
-            accessibility: { score: a11yScore, max: 20, issues: a11yIssues },
-            interactivity: { score: interactiveScore, max: 20, found: visibleElements.length, clicked: clickedCount, working: workingCount },
-            video_url: videoUrl,
-          },
+          result: finalResult,
         })
       } catch (err: any) {
         send({ step: 'error', message: `Test failed: ${err.message}`, progress: 0 })

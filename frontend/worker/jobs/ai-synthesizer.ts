@@ -2,8 +2,8 @@ import type { Job } from 'bullmq'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { getQueue, QUEUE_NAMES } from '@/lib/queue/client'
 import { deriveSkillProfile } from '@/lib/utils/skill-engine'
-import { generateRoadmap, generateFlawNarration, generateResumeRewrite } from '@/lib/ai/groq'
-import { geminiFlawNarration, geminiResumeRewrite } from '@/lib/ai/gemini'
+import { generateRoadmap, generateFlawNarration, generateResumeRecommendations } from '@/lib/ai/groq'
+import { geminiFlawNarration, geminiResumeRecommendations } from '@/lib/ai/gemini'
 import type { RepoAnalysis, SkillProfile } from '@/types/index'
 import type { QualityReport } from '@/types/analysis'
 import type { AuditFlawFinding } from '@/types/index'
@@ -124,24 +124,8 @@ export async function handleAISynthesis(job: Job): Promise<void> {
 
   // ── Rewrite resume bullets if provided (Groq primary, Gemini fallback) ──
   if (session?.resume_text) {
-    // Split by newlines, literal bullets, or numeric bullet encodings like 210
-    let lines = session.resume_text.split(/(?:\n|•|\*|—|-(?=\s)|210\s+)/g)
-    
-    let bullets = lines
-      .map((l: string) => l.trim().replace(/^[\d\s]+/, ''))
-      .filter((l: string) => l.length > 20 && l.length < 600)
-      .slice(0, 10)
-
-    if (bullets.length === 0) {
-      // Fallback: just split by periods
-      bullets = session.resume_text
-        .split(/\.\s+/)
-        .map((l: string) => l.trim().replace(/^[\d\s]+/, ''))
-        .filter((l: string) => l.length > 20 && l.length < 1000)
-        .slice(0, 8)
-    }
-
-    if (bullets.length > 0) {
+    const rawText = session.resume_text
+    if (rawText.length > 50) {
       const evidence = repo_analyses.map(r => ({
         repo_name: r.repo_name,
         complexity_tier: r.complexity_tier,
@@ -152,25 +136,25 @@ export async function handleAISynthesis(job: Job): Promise<void> {
         languages: [r.language],
       }))
 
-      let rewrittenBullets = await generateResumeRewrite({
-        original_bullets: bullets,
+      let recommendations = await generateResumeRecommendations({
+        resume_text: rawText,
         audit_evidence: evidence,
         is_tutorial_repos: [],
         overall_tier: skillProfile.overall_tier,
         github_username: session?.github_username || 'developer',
       })
 
-      if (rewrittenBullets.length === 0) {
-        console.log('[AISynthesizer] Groq resume rewrite empty, trying Gemini fallback...')
-        rewrittenBullets = await geminiResumeRewrite({
-          original_bullets: bullets,
+      if (recommendations.length === 0) {
+        console.log('[AISynthesizer] Groq resume recommendation empty, trying Gemini fallback...')
+        recommendations = await geminiResumeRecommendations({
+          resume_text: rawText,
           audit_evidence: evidence,
           overall_tier: skillProfile.overall_tier,
           github_username: session?.github_username || 'developer',
         })
       }
 
-      roadmap.rewritten_bullets = rewrittenBullets
+      roadmap.recommendations = recommendations
     }
   }
 
@@ -187,7 +171,7 @@ export async function handleAISynthesis(job: Job): Promise<void> {
     archetype_prescription: roadmap.archetype_prescription,
     resume_lead_projects: roadmap.resume_lead_projects || [],
     resume_bury_projects: roadmap.resume_bury_projects || [],
-    rewritten_bullets: roadmap.rewritten_bullets || [],
+    rewritten_bullets: roadmap.recommendations || [],
     created_at: new Date().toISOString(),
   })
   if (rmErr) console.warn('[AISynthesizer] Failed to save roadmap:', rmErr.message)

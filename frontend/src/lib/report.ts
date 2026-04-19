@@ -27,7 +27,7 @@ export async function getFullReport(sessionId: string): Promise<AuditReport | nu
   }
 
   // 2. Fetch all related data in parallel
-  const [repoRes, skillRes, marketRes, roadmapRes] = await Promise.all([
+  const [repoRes, skillRes, marketRes, roadmapRes, liveAppRes] = await Promise.all([
     supabaseAdmin
       .from('repo_analyses')
       .select('*')
@@ -50,6 +50,12 @@ export async function getFullReport(sessionId: string): Promise<AuditReport | nu
       .eq('session_id', sessionId)
       .order('created_at', { ascending: false })
       .limit(1),
+    supabaseAdmin
+      .from('live_app_audits')
+      .select('*')
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: false })
+      .limit(1),
   ])
 
   const report: AuditReport = {
@@ -59,6 +65,7 @@ export async function getFullReport(sessionId: string): Promise<AuditReport | nu
     market_fit: (marketRes.data?.[0] ?? {}) as MarketFit,
     roadmap: (roadmapRes.data?.[0] ?? null) as Roadmap,
     flaw_findings: ((skillRes.data?.[0] as any)?.flaw_findings ?? []) as AuditFlawFinding[],
+    live_app_audit: liveAppRes.data?.[0] ?? null,
     generated_at: session.completed_at ?? new Date().toISOString(),
     share_token: undefined, // no longer extracted from audit_reports
   }

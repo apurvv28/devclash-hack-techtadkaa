@@ -3,6 +3,7 @@ export interface GitHubRepo {
   name: string
   full_name: string
   description: string | null
+  homepage: string | null
   html_url: string
   clone_url: string
   default_branch: string

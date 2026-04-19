@@ -1,6 +1,6 @@
 import type { Job } from 'bullmq'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { getRepository, getCommits, getCommitsByAuthor, getRepoTree, parseRepoUrl } from '@/lib/github/rest'
+import { getRepository, getCommits, getCommitsByAuthor, getRepoTree, parseRepoUrl, extractRepoDeploymentUrl } from '@/lib/github/rest'
 import { getLanguageBreakdown } from '@/lib/github/graphql'
 import { getQueue, QUEUE_NAMES } from '@/lib/queue/client'
 import type { GitHubRepo, GitHubCommit } from '@/types/github'
@@ -102,6 +102,25 @@ export async function handleGitHubFetch(job: Job): Promise<void> {
     return
   }
 
+  // Auto-discover deployment URL from repo metadata if not explicitly provided
+  let resolvedDeploymentUrl = deployment_url
+  if (!resolvedDeploymentUrl) {
+    for (const rd of repoData) {
+      const discoveredUrl = extractRepoDeploymentUrl(rd.repo)
+      if (discoveredUrl) {
+        resolvedDeploymentUrl = discoveredUrl
+        console.log(`[GitHubFetcher] Auto-discovered deployment URL from ${rd.repo.name}: ${discoveredUrl}`)
+        
+        // Update session with discovered deployment URL
+        await supabaseAdmin
+          .from('audit_sessions')
+          .update({ deployment_url: discoveredUrl, ui_ux_skipped: false })
+          .eq('id', session_id)
+        break
+      }
+    }
+  }
+
   console.log(`[GitHubFetcher] Successfully fetched ${repoData.length}/${project_urls.length} repos. Advancing to code analysis...`)
   await updateSessionStatus(session_id, 'fetching_github', 38)
 
@@ -114,7 +133,7 @@ export async function handleGitHubFetch(job: Job): Promise<void> {
   await analysisQueue.add('analyze-repo', {
     session_id,
     github_username,
-    deployment_url,
+    deployment_url: resolvedDeploymentUrl,
     repos: repoData.map((r) => ({
       repo_name: r.repo.full_name,
       branch_name: r.repo.default_branch,

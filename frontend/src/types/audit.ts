@@ -32,6 +32,7 @@ export interface AuditReport {
   market_fit: MarketFit
   roadmap: Roadmap
   flaw_findings: AuditFlawFinding[]
+  live_app_audit?: any
   generated_at: string
   share_token?: string
 }

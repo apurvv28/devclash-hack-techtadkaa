@@ -13,6 +13,8 @@ interface UiUxTestPanelProps {
     ui_ux_score?: number
     ui_ux_skipped?: boolean
   }
+  initialResult?: any
+  isPublicShare?: boolean
 }
 
 interface TestResult {
@@ -32,14 +34,14 @@ interface LogEntry {
   step: string
 }
 
-export function UiUxTestPanel({ session }: UiUxTestPanelProps) {
+export function UiUxTestPanel({ session, initialResult, isPublicShare = false }: UiUxTestPanelProps) {
   const [isRunning, setIsRunning] = useState(false)
   const [progress, setProgress] = useState(0)
   const [logs, setLogs] = useState<LogEntry[]>([])
-  const [result, setResult] = useState<TestResult | null>(null)
+  const [result, setResult] = useState<TestResult | null>(initialResult || null)
   const [error, setError] = useState<string | null>(null)
   const [showVideo, setShowVideo] = useState(true)
-  const [showDetails, setShowDetails] = useState(false)
+  const [showDetails, setShowDetails] = useState(true)
   const logContainerRef = useRef<HTMLDivElement>(null)
 
   const addLog = useCallback((step: string, message: string) => {
@@ -166,24 +168,26 @@ export function UiUxTestPanel({ session }: UiUxTestPanelProps) {
                 className="inline-flex items-center gap-1.5 text-xs text-[#718096] hover:text-[#003882] font-medium transition"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
-                Open Site
+                Live Demo
               </a>
             )}
-            <button
-              onClick={runTest}
-              disabled={isRunning || !session.deployment_url}
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-[#00A1E4] to-[#003882] text-white text-xs font-semibold px-5 py-2.5 rounded-xl hover:from-[#003882] hover:to-[#00A1E4] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
-            >
-              {isRunning ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Testing...
-                </>
-              ) : (
-                <>
-                  <Play className="w-3.5 h-3.5" /> Run UI/UX Test
-                </>
-              )}
-            </button>
+            {!isPublicShare && (
+              <button
+                onClick={runTest}
+                disabled={isRunning || !session.deployment_url}
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-[#00A1E4] to-[#003882] text-white text-xs font-semibold px-5 py-2.5 rounded-xl hover:from-[#003882] hover:to-[#00A1E4] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+              >
+                {isRunning ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Testing...
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-3.5 h-3.5" /> Run UI/UX Test
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
 
@@ -266,7 +270,7 @@ export function UiUxTestPanel({ session }: UiUxTestPanelProps) {
       )}
 
       {/* Video Player */}
-      {result?.video_url && (
+      {!isPublicShare && result?.video_url && (
         <div className="bg-white border border-[#E2E8F0] rounded-2xl overflow-hidden shadow-sm">
           <button
             onClick={() => setShowVideo(!showVideo)}
