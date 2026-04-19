@@ -9,15 +9,13 @@ import { FlawFindingsPanel } from '@/components/dashboard/FlawFindingsPanel'
 import { MarketFitPanel } from '@/components/dashboard/MarketFitPanel'
 import { SalaryGapChart } from '@/components/dashboard/SalaryGapChart'
 import { RoadmapView } from '@/components/dashboard/RoadmapView'
-import { ResumeDamageReport } from '@/components/dashboard/ResumeDamageReport'
 import { UiUxTestPanel } from '@/components/dashboard/UiUxTestPanel'
 
 interface ReportDashboardClientProps {
   report: AuditReport
   isPublicShare?: boolean
 }
-
-type TabKey = 'findings' | 'repos' | 'market' | 'roadmap' | 'resume' | 'uiux'
+type TabKey = 'findings' | 'repos' | 'market' | 'roadmap' | 'uiux'
 
 const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
   { key: 'findings', label: 'Findings', icon: AlertTriangle },
@@ -25,7 +23,6 @@ const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
   { key: 'uiux', label: 'UI/UX', icon: BarChart3 },
   { key: 'market', label: 'Market', icon: Target },
   { key: 'roadmap', label: 'Roadmap', icon: Map },
-  { key: 'resume', label: 'Resume', icon: FileText },
 ]
 
 export function ReportDashboardClient({ report, isPublicShare = false }: ReportDashboardClientProps) {
@@ -247,15 +244,6 @@ export function ReportDashboardClient({ report, isPublicShare = false }: ReportD
                 <RoadmapView
                   weeks={roadmap.week_breakdown || []}
                   prioritySkills={roadmap.priority_skills || []}
-                />
-              )}
-
-              {activeTab === 'resume' && roadmap && (
-                <ResumeDamageReport
-                  leadProjects={roadmap?.resume_lead_projects || []}
-                  buryProjects={roadmap?.resume_bury_projects || []}
-                  repoAnalyses={repo_analyses || []}
-                  recommendations={roadmap?.recommendations || []}
                 />
               )}
             </div>
